@@ -1,2 +1,2 @@
 # Rusted Fortress
- Dwarf Simulator-esque game made in Bevy
+ Dwarf Fortress-esque game made in Bevy
