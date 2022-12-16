@@ -11,7 +11,7 @@ fn startup(
     commands.spawn(Camera2dBundle::default());
 
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
-
+    
     let tilemap_size = TilemapSize { x: 64, y: 64 };
 
     create_tilemap(commands, texture_handle, tilemap_size);
