@@ -1,9 +1,12 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, diagnostic::FrameTimeDiagnosticsPlugin};
 use bevy_ecs_tilemap::prelude::*;
+use camera::{DisplayHeight, DisplayedTiles};
+use map_gen::Height;
 
 mod camera;
 mod settings;
 mod map_gen;
+mod debug;
 
 fn startup(
     mut commands: Commands,
@@ -13,37 +16,10 @@ fn startup(
 
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
     
-    let tilemap_size = TilemapSize { x: 64, y: 64 };
+    //settings::MAP_SIZE = TilemapSize { x: 64, y: 64 };
 
-    map_gen::create_tilemap3d(commands, texture_handle, tilemap_size, settings::MAP_HEIGHT_LIMITS);
+    map_gen::create_tilemap3d(commands, texture_handle, settings::MAP_SIZE, settings::MAP_HEIGHT_LIMITS);
 }
-
-/* fn swap_texture_or_hide(
-    asset_server: Res<AssetServer>,
-    keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut TilemapTexture, &mut Visibility)>,
-) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        let texture_a = TilemapTexture::Single(asset_server.load("tiles.png"));
-        let texture_b = TilemapTexture::Single(asset_server.load("tiles2.png"));
-        for (mut tilemap_tex, _) in &mut query {
-            if *tilemap_tex == texture_a {
-                *tilemap_tex = texture_b.clone();
-            } else {
-                *tilemap_tex = texture_a.clone();
-            }
-        }
-    }
-    if keyboard_input.just_pressed(KeyCode::H) {
-        for (_, mut visibility) in &mut query {
-            if visibility.is_visible {
-                visibility.is_visible = false;
-            } else {
-                visibility.is_visible = true;
-            }
-        }
-    }
-} */
 
 fn main() {
     App::new()
@@ -58,8 +34,14 @@ fn main() {
             },
             ..default()
         }).set(ImagePlugin::default_nearest()))
+        .init_resource::<DisplayHeight>()
+        .init_resource::<DisplayedTiles>()
         .add_plugin(TilemapPlugin)
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(startup)
+        .add_startup_system(debug::spawn_debug_text)
+        .add_system(debug::update_debug_text)
         .add_system(camera::movement)
+        .add_system(camera::display_layer)
         .run();
 }

@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use crate::settings;
+use crate::{settings};
 use noise::{Perlin, NoiseFn};
 
 pub struct MapHeight{
-    max: Height,
-    min: Height,
+    pub max: Height,
+    pub min: Height,
     current: Height
 }
 impl MapHeight{
@@ -36,7 +36,7 @@ type NoiseMap = Vec<Vec<Height>>;
 
 
 #[derive(Component, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-pub struct Height(u32);
+pub struct Height(pub u32);
 
 impl From<Height> for u32 {
     fn from(value: Height) -> Self {
@@ -46,6 +46,8 @@ impl From<Height> for u32 {
 
 #[derive(Component)]
 pub struct Open;
+#[derive(Component)]
+pub struct Terrain;
 #[derive(Component)]
 struct Transparent;
 
@@ -75,7 +77,7 @@ struct GameTilemapBundle {
 }
 
 pub fn create_tilemap3d(mut commands: Commands, texture_handle: Handle<Image>, tilemap_size: TilemapSize, height_limits: MapHeight){
-    let noisemap = create_noisemap(0, &tilemap_size, &height_limits);
+    let noisemap = create_heightmap(0, &tilemap_size, &height_limits);
 
     for height in height_limits {
         create_tilemap(&mut commands, texture_handle.clone(), tilemap_size, height, &noisemap)
@@ -117,21 +119,29 @@ fn fill_tilemap(commands: &mut Commands, tilemap_size: TilemapSize, tilemap_enti
                     position: tile_pos,
                     tilemap_id: TilemapId(tilemap_entity),
                     color: TileColor(Color::rgb_u8(10, height.0 as u8, 10)),
+                    visible: TileVisible(false),
                     ..Default::default()
                 }
             };
-            if height > noisemap[x as usize][y as usize] {
-                tile_bundle.tile_bundle.visible.0 = false;
-            }
-            let tile_entity = commands
-                .spawn(tile_bundle)
-                .id();
+            let tile_entity = if height > noisemap[x as usize][y as usize] {
+                commands
+                .spawn((tile_bundle, Open))
+                .id()
+            } else if height != noisemap[x as usize][y as usize] {
+                commands
+                .spawn((tile_bundle, Terrain))
+                .id()
+            } else {
+                commands
+                .spawn((tile_bundle, Terrain))
+                .id()
+            };
             tile_storage.set(&tile_pos, tile_entity);
         }
     }
 }
 
-fn create_noisemap(seed: u32, tilemap_size: &TilemapSize, height_limits: &MapHeight) -> NoiseMap{
+fn create_heightmap(seed: u32, tilemap_size: &TilemapSize, height_limits: &MapHeight) -> NoiseMap{
     let noise = Perlin::new(seed);
     let mut noisemap = vec![vec![Height(0); tilemap_size.x as usize]; tilemap_size.y as usize];
     let scaling_amount = height_limits.max.0 - height_limits.min.0;
@@ -140,6 +150,5 @@ fn create_noisemap(seed: u32, tilemap_size: &TilemapSize, height_limits: &MapHei
             noisemap[x as usize][y as usize] = Height((((noise.get([x as f64 * settings::MAP_SCALING, y as f64 * settings::MAP_SCALING]) + 1.0) / 2.0) * (scaling_amount - 10) as f64).round() as u32)
         }
     }
-    //println!("{:?}", noisemap);
     noisemap
 }
