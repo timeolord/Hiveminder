@@ -1,9 +1,25 @@
 use bevy::{prelude::*, diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin}};
-
-use crate::{map_gen::Height, camera::DisplayHeight};
+use crate::camera::DisplayHeight;
+use crate::GameState::Game;
 
 #[derive(Component)]
 pub struct DebugText;
+
+pub struct DebugPlugin;
+
+impl Plugin for DebugPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_system_set(
+            SystemSet::on_enter(Game)
+                .with_system(spawn_debug_text)
+        )
+        .add_system_set(
+            SystemSet::on_update(Game)
+                .with_system(update_debug_text)
+        );
+    }
+}
 
 const DEBUG_FONT_SIZE: f32 = 20.0;
 
@@ -49,6 +65,6 @@ pub fn update_debug_text(diagnostics: Res<Diagnostics>, display_height: Res<Disp
                 text.sections[1].value = format!("{value:.2}");
             }
         }
-        text.sections[3].value = format!("{}", display_height.height.0);
+        text.sections[3].value = format!("{}", display_height.height.value);
     }
 }
