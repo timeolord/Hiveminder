@@ -161,16 +161,16 @@ fn create_heightmap(seed: u32, tilemap_size: &TilemapSize, height_limits: &MapHe
 }
 
 fn initalize_resources(mut commands: Commands, asset_server: Res<AssetServer>){
-    let max_height = 128;
+    let max_height = 64;
     let min_height = 0;
     let tile_pixel_length = 16.0;
-    let tile_map_size = 128;
-    let scaling = (max_height - min_height) as f64;
+    let tile_map_size = 32;
+    let scaling = 0.1;
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
     commands.insert_resource(MapSettings::new(
         TilemapSize::from_usize(tile_map_size, tile_map_size),
-        MapHeight::new(min_height, max_height),
+        MapHeight::new(max_height, min_height),
         TilemapTileSize{x: tile_pixel_length, y: tile_pixel_length },
         scaling,
         texture_handle

@@ -34,11 +34,27 @@ impl Sub<Height> for Height {
         Height{value}
     }
 }
+impl Sub<usize> for Height {
+    type Output = Height;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        let value = self.value - rhs;
+        Height{value}
+    }
+}
 impl Add<Height> for Height {
     type Output = Height;
 
     fn add(self, rhs: Height) -> Self::Output {
         let value = self.value + rhs.value;
+        Height{value}
+    }
+}
+impl Add<usize> for Height {
+    type Output = Height;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        let value = self.value + rhs;
         Height{value}
     }
 }

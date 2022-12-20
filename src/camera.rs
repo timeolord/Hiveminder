@@ -1,7 +1,7 @@
 use bevy::{input::Input, math::Vec3, prelude::*, render::camera::Camera};
 use bevy_ecs_tilemap::tiles::{TileStorage, TileVisible, TilePos};
 use crate::map_gen::{Terrain, MapSettings};
-use ndarray::Array3;
+use ndarray::{Array3, Array2};
 use crate::GameState::Game;
 use crate::map_gen::height::Height;
 
@@ -9,13 +9,21 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
+        /* let initalize_display_layer_system = || {
+            move |display_height: Res<DisplayHeight>,
+            previous_tiles: ResMut<PreviousTiles>,
+            map_settings: Res<MapSettings>,
+            tiles: Query<(&mut TileVisible, &Height, &TilePos), With<Terrain>>|
+            {display_layer(display_height, &mut None, previous_tiles, map_settings, tiles)}}; */
+
         app.add_system_set(
             SystemSet::on_enter(Game)
-                .with_system(spawn_camera)
+                .with_system(initalize_resources)
         )
         .add_system_set(
             SystemSet::on_update(Game)
                 .with_system(movement)
+                .with_system(display_layer)
         );
     }
 }
@@ -23,45 +31,79 @@ impl Plugin for CameraPlugin {
 pub struct DisplayHeight {
     pub height: Height,
 }
+#[derive(Resource)]
+pub struct PreviousTiles {
+    pub tiles: Array3<bool>,
+}
 
 #[derive(Component)]
 pub struct Visible;
 
-
-/* pub fn display_layer(mut commands: Commands, display_height: Res<DisplayHeight>, mut previous_tiles: Local<Array3<bool>>, map_settings: Res<MapSettings>, mut tiles: Query<(Entity, &mut TileVisible, &Height, &TilePos), With<Terrain>>) {
-    if !display_height.is_changed() {
-        return
-    }
-    //todo FIX THIS!
-    for (_, mut tile_visible, height, tile_pos) in tiles.iter_mut() {
-        let index = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
-        if previous_tiles[index] {
-            tile_visible.0 = true;
-            previous_tiles[index] = false;
-        }
-    }
-    let mut open_positions = vec![vec![true; settings::MAP_SIZE.x as usize]; settings::MAP_SIZE.x as usize];
-    
-    let mut current_height = display_height.height;
-    while open_positions.iter().any(|x| x.iter().any(|y| *y)) {
-        for (entity, mut tile_visible, height, tile_pos) in tiles.iter_mut() {
-            if current_height == *height && open_positions[tile_pos.x as usize][tile_pos.y as usize] {
-                tile_visible.0 = true;
-                commands.entity(entity).insert(Visible);
-                open_positions[tile_pos.x as usize][tile_pos.y as usize] = false;
-            }
-        }
-        if current_height.0 == (display_height.height.0 as i32 - 8).clamp(settings::MIN_HEIGHT as i32, settings::MAX_HEIGHT as i32) as u32{
+pub fn display_layer(
+    display_height: Res<DisplayHeight>,
+    mut previous_height: Local<Option<Height>>,
+    mut previous_tiles: ResMut<PreviousTiles>,
+    map_settings: Res<MapSettings>,
+    mut tiles: Query<(&mut TileVisible, &Height, &TilePos), With<Terrain>>) {
+        if !display_height.is_changed() {
             return
         }
-        else {
-            current_height.0 -= 1;
+        if let Some(ref mut prev_height) = *previous_height {
+            if display_height.height > *prev_height {
+                for (mut tile_visible, height, tile_pos) in tiles.iter_mut() {
+                    let index3d = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
+                    let index2d = [tile_pos.x as usize, tile_pos.y as usize];
+                
+                    if height.value == display_height.height.value - 1 && map_settings.heightmap[index2d] != display_height.height - 1{
+                        tile_visible.0 = false;
+                        previous_tiles.tiles[index3d] = false;
+                    }
+                    else if height.value == display_height.height.value {
+                        tile_visible.0 = true;
+                        previous_tiles.tiles[index3d] = true;
+                    }
+                }
+            }
+            else if display_height.height < *prev_height {
+                for (mut tile_visible, height, tile_pos) in tiles.iter_mut() {
+                    let index3d = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
+                
+                    if height.value == display_height.height.value + 1{
+                        tile_visible.0 = false;
+                        previous_tiles.tiles[index3d] = false;
+                    }
+                    else if height.value == display_height.height.value {
+                        tile_visible.0 = true;
+                        previous_tiles.tiles[index3d] = true;
+                    }
+                }
+            }
+            prev_height.value = display_height.height.value;
         }
-    }
-} */
+        else {
+            *previous_height = Some(display_height.height);
+            for (mut tile_visible, height, tile_pos) in tiles.iter_mut() {
+                let index = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
+            
+                if height.value == display_height.height.value {
+                    tile_visible.0 = true;
+                    previous_tiles.tiles[index] = true;
+                }
+            }
+        }
+}
 
-pub fn spawn_camera(mut commands: Commands){
+pub fn initalize_resources(mut commands: Commands, map_settings: Res<MapSettings>){
     commands.spawn(Camera2dBundle::default());
+    commands.insert_resource(DisplayHeight {height: Height{ value: 0}});
+    commands.insert_resource(PreviousTiles {
+        tiles: Array3::from_elem(
+            [
+            map_settings.size.x as usize,
+            map_settings.size.y as usize,
+            (map_settings.height_limits.max - map_settings.height_limits.min).into()],
+            false)
+        });
 }
 
 // A simple camera system for moving and zooming the camera.
@@ -100,7 +142,7 @@ pub fn movement(
         }
         
         let z = transform.translation.z;
-        transform.translation += direction * 16. * time.delta_seconds();
+        transform.translation += direction * 250. * time.delta_seconds();
         // Important! We need to restore the Z values when moving the camera around.
         // Bevy has a specific camera setup and this can mess with how our layers are shown.
         transform.translation.z = z;
