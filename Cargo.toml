@@ -14,5 +14,8 @@ itertools = "0.10.5"
 ndarray = "0.15.6"
 noise = "0.8.2"
 
+[dev.dependencies]
+trunk = "0.16.0"
+
 [profile.dev.package."*"]
 opt-level = 3
