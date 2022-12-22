@@ -1,21 +1,20 @@
+use std::convert::identity;
+
+use bevy::reflect::Map;
 use bevy::{input::Input, math::Vec3, prelude::*, render::camera::Camera};
-use bevy_ecs_tilemap::tiles::{TileStorage, TileVisible, TilePos};
-use crate::map_gen::{Terrain, MapSettings};
-use ndarray::{Array3, Array2};
+use bevy_ecs_tilemap::prelude::TilemapSize;
+use bevy_ecs_tilemap::tiles::{TileVisible, TilePos, TileStorage};
+use crate::GameTickEvent;
+use crate::map_gen::{Terrain, MapSettings, Tilemap3D};
+use ndarray::Array3;
 use crate::GameState::Game;
 use crate::map_gen::height::Height;
+use crate::tiles::Index2D;
 
 pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        /* let initalize_display_layer_system = || {
-            move |display_height: Res<DisplayHeight>,
-            previous_tiles: ResMut<PreviousTiles>,
-            map_settings: Res<MapSettings>,
-            tiles: Query<(&mut TileVisible, &Height, &TilePos), With<Terrain>>|
-            {display_layer(display_height, &mut None, previous_tiles, map_settings, tiles)}}; */
-
         app.add_system_set(
             SystemSet::on_enter(Game)
                 .with_system(initalize_resources)
@@ -24,6 +23,7 @@ impl Plugin for CameraPlugin {
             SystemSet::on_update(Game)
                 .with_system(movement)
                 .with_system(display_layer)
+                .with_system(display_height_input)
         );
     }
 }
@@ -42,39 +42,40 @@ pub struct Visible;
 pub fn display_layer(
     display_height: Res<DisplayHeight>,
     mut previous_height: Local<Option<Height>>,
-    mut previous_tiles: ResMut<PreviousTiles>,
     map_settings: Res<MapSettings>,
-    mut tiles: Query<(&mut TileVisible, &Height, &TilePos), With<Terrain>>) {
+    tilemap3d: Res<Tilemap3D>,
+    tilemaps: Query<&TileStorage>,
+    mut tiles: Query<&mut TileVisible, With<Terrain>>) {
         if !display_height.is_changed() {
             return
         }
         if let Some(ref mut prev_height) = *previous_height {
             if display_height.height > *prev_height {
-                for (mut tile_visible, height, tile_pos) in tiles.iter_mut() {
-                    let index3d = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
-                    let index2d = [tile_pos.x as usize, tile_pos.y as usize];
-                
-                    if height.value == display_height.height.value - 1 && map_settings.heightmap[index2d] != display_height.height - 1{
-                        tile_visible.0 = false;
-                        previous_tiles.tiles[index3d] = false;
+                let layers = [tilemap3d.layers[display_height.height.value], tilemap3d.layers[display_height.height.value - 1]];
+                let [current_layer, previous_layer] = tilemaps.many(layers);
+
+                for index in map_settings.layer_size {
+                    if let Ok(ref mut tile) = tiles.get_mut(current_layer.get_2d(index)){
+                        tile.0 = true;
                     }
-                    else if height.value == display_height.height.value {
-                        tile_visible.0 = true;
-                        previous_tiles.tiles[index3d] = true;
+
+                    if map_settings.heightmap[index] != display_height.height - 1 {
+                        if let Ok(ref mut tile) = tiles.get_mut(previous_layer.get_2d(index)){
+                            tile.0 = false;
+                        }
                     }
                 }
             }
             else if display_height.height < *prev_height {
-                for (mut tile_visible, height, tile_pos) in tiles.iter_mut() {
-                    let index3d = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
-                
-                    if height.value == display_height.height.value + 1{
-                        tile_visible.0 = false;
-                        previous_tiles.tiles[index3d] = false;
+                let layers = [tilemap3d.layers[display_height.height.value], tilemap3d.layers[display_height.height.value + 1]];
+                let [current_layer, previous_layer] = tilemaps.many(layers);
+
+                for index in map_settings.layer_size {
+                    if let Ok(ref mut tile) = tiles.get_mut(current_layer.get_2d(index)){
+                        tile.0 = true;
                     }
-                    else if height.value == display_height.height.value {
-                        tile_visible.0 = true;
-                        previous_tiles.tiles[index3d] = true;
+                    if let Ok(ref mut tile) = tiles.get_mut(previous_layer.get_2d(index)){
+                        tile.0 = false;
                     }
                 }
             }
@@ -82,37 +83,31 @@ pub fn display_layer(
         }
         else {
             *previous_height = Some(display_height.height);
-            for (mut tile_visible, height, tile_pos) in tiles.iter_mut() {
-                let index = [tile_pos.x as usize, tile_pos.y as usize, height.value as usize];
-            
-                if height.value == display_height.height.value {
-                    tile_visible.0 = true;
-                    previous_tiles.tiles[index] = true;
+            let layer = tilemaps.get(tilemap3d.layers[display_height.height.value]).unwrap();
+
+            for index in map_settings.layer_size {
+                if let Ok(ref mut tile) = tiles.get_mut(layer.get_2d(index)){
+                    tile.0 = true;
                 }
             }
         }
 }
 
+
 pub fn initalize_resources(mut commands: Commands, map_settings: Res<MapSettings>){
+    let map_size: [usize; 3] = map_settings.size.into();
     commands.spawn(Camera2dBundle::default());
-    commands.insert_resource(DisplayHeight {height: Height{ value: 0}});
+    commands.insert_resource(DisplayHeight {height: Height{ value: map_settings.height_limits.min.into()}});
     commands.insert_resource(PreviousTiles {
         tiles: Array3::from_elem(
-            [
-            map_settings.size.x as usize,
-            map_settings.size.y as usize,
-            (map_settings.height_limits.max - map_settings.height_limits.min).into()],
-            false)
+            map_size, false)
         });
 }
 
-// A simple camera system for moving and zooming the camera.
 pub fn movement(
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<&mut Transform, With<Camera>>,
-    mut display_height: ResMut<DisplayHeight>,
-    map_settings: Res<MapSettings>,
 ) {
     for mut transform in query.iter_mut() {
         let mut direction = Vec3::ZERO;
@@ -132,19 +127,25 @@ pub fn movement(
         if keyboard_input.pressed(KeyCode::S) {
             direction -= Vec3::new(0.0, 1.0, 0.0);
         }
-        if keyboard_input.pressed(KeyCode::Z) {
-            display_height.height.value = (display_height.height.value + 1).clamp(map_settings.height_limits.min.into(), map_settings.height_limits.max.into());
-        }
-        else if keyboard_input.pressed(KeyCode::X) {
-            if display_height.height.value != 0 {
-                display_height.height.value = (display_height.height.value - 1).clamp(map_settings.height_limits.min.into(), map_settings.height_limits.max.into());
-            }
-        }
         
         let z = transform.translation.z;
         transform.translation += direction * 250. * time.delta_seconds();
         // Important! We need to restore the Z values when moving the camera around.
         // Bevy has a specific camera setup and this can mess with how our layers are shown.
         transform.translation.z = z;
+    }
+}
+
+pub fn display_height_input(keyboard_input: Res<Input<KeyCode>>, mut display_height: ResMut<DisplayHeight>, map_settings: Res<MapSettings>, gametick_event: EventReader<GameTickEvent>) {
+    if gametick_event.is_empty() {
+        return
+    }
+    if keyboard_input.pressed(KeyCode::Z) {
+        display_height.height.value = (display_height.height.value + 1).clamp(map_settings.height_limits.min.into(), map_settings.height_limits.max.value - 1);
+    }
+    else if keyboard_input.pressed(KeyCode::X) {
+        if display_height.height.value != 0 {
+            display_height.height.value = (display_height.height.value - 1).clamp(map_settings.height_limits.min.into(), map_settings.height_limits.max.value - 1);
+        }
     }
 }

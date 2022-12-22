@@ -7,19 +7,11 @@ use self::height::Height;
 pub(crate) mod height;
 use crate::GameState::{WorldGen, self};
 use crate::GameState::Game;
+use crate::tiles::{GameTilemapSize, GameTilePos, Game3DSize};
+
 
 pub struct MapGeneratorPlugin;
 
-trait FromUsize {
-    fn from_usize(x: usize, y: usize) -> Self;
-}
-impl FromUsize for TilemapSize {
-    fn from_usize(x: usize, y: usize) -> Self {
-        let x = x as u32;
-        let y = y as u32;
-        Self {x, y}
-    }
-}
 pub struct MapHeight{
     pub max: Height,
     pub min: Height,
@@ -34,10 +26,15 @@ impl MapHeight{
     pub fn iter(self: &Self) -> Range<usize>{
         self.min.into()..self.max.into()
     }
+    pub fn height_interval(self: &Self) -> Height {
+        self.max - self.min
+    }
 }
+
 #[derive(Resource)]
 pub struct MapSettings {
-    pub size: TilemapSize,
+    pub layer_size: GameTilemapSize,
+    pub size: Game3DSize,
     pub height_limits: MapHeight,
     pub scaling: f64,
     pub tile_size: TilemapTileSize,
@@ -45,10 +42,12 @@ pub struct MapSettings {
     pub texture_handle: Handle<Image>,
 }
 impl MapSettings {
-    pub fn new(size: TilemapSize, height_limits: MapHeight, tile_size: TilemapTileSize, scaling: f64, texture_handle: Handle<Image>) -> Self {
+    pub fn new(size: GameTilemapSize, height_limits: MapHeight, tile_size: TilemapTileSize, scaling: f64, texture_handle: Handle<Image>) -> Self {
         let heightmap = create_heightmap(0, &size, &height_limits, scaling);
+        let size3d = Game3DSize{x: size.size.x as usize, y: size.size.y as usize, z: height_limits.height_interval().into()};
         Self {
-            size,
+            layer_size: size,
+            size: size3d,
             height_limits,
             scaling,
             tile_size,
@@ -60,14 +59,13 @@ impl MapSettings {
 
 type HeightMap = Array2<Height>;
 
-
 #[derive(Component)]
 pub struct Open;
 #[derive(Component)]
 pub struct Terrain;
 #[derive(Bundle)]
 struct GameTileBundle {
-    height: Height,
+    position: GameTilePos,
     tile_bundle: TileBundle
 }
 #[derive(Bundle)]
@@ -75,8 +73,12 @@ struct GameTilemapBundle {
     height: Height,
     tilemap_bundle: TilemapBundle
 }
+#[derive(Resource)]
+pub struct Tilemap3D {
+    pub layers: Vec<Entity>
+}
 
-pub fn create_tilemap3d(mut commands: Commands, map_settings: Option<Res<MapSettings>>, mut game_state: ResMut<State<GameState>>){
+pub fn create_tilemap3d(mut commands: Commands, map_settings: Option<Res<MapSettings>>, mut game_state: ResMut<State<GameState>>, mut tilemap3d: ResMut<Tilemap3D>){
     if map_settings.is_none() {
         return;
     }
@@ -84,16 +86,16 @@ pub fn create_tilemap3d(mut commands: Commands, map_settings: Option<Res<MapSett
 
     for height in map_settings.height_limits.iter() {
         let height = Height{value: height};
-        create_tilemap(&mut commands, height,&map_settings);
+        tilemap3d.layers.push(create_tilemap(&mut commands, height,&map_settings));
     }
 
     game_state.set(Game).unwrap();
 }
 
-fn create_tilemap(commands: &mut Commands, height: Height, map_settings: &MapSettings){
+fn create_tilemap(commands: &mut Commands, height: Height, map_settings: &MapSettings) -> Entity{
     let tilemap_entity = commands.spawn_empty().id();
 
-    let mut tile_storage = TileStorage::empty(map_settings.size);
+    let mut tile_storage = TileStorage::empty(map_settings.layer_size.into());
     fill_tilemap(commands, tilemap_entity, &mut tile_storage, height,&map_settings);
 
     let grid_size = map_settings.tile_size.into();
@@ -104,77 +106,77 @@ fn create_tilemap(commands: &mut Commands, height: Height, map_settings: &MapSet
         tilemap_bundle: TilemapBundle {
             grid_size,
             map_type,
-            size: map_settings.size,
+            size: map_settings.layer_size.into(),
             storage: tile_storage,
             texture: TilemapTexture::Single(map_settings.texture_handle.clone()),
             tile_size: map_settings.tile_size,
-            transform: get_tilemap_center_transform(&map_settings.size, &grid_size, &map_type, 0.0),
+            transform: get_tilemap_center_transform(&map_settings.layer_size.into(), &grid_size, &map_type, 0.0),
             ..Default::default()
         }
     });
+    tilemap_entity
 }
 
 fn fill_tilemap(commands: &mut Commands, tilemap_entity: Entity, tile_storage: &mut TileStorage, height: Height, map_settings: &MapSettings) {
-    for x in 0..map_settings.size.x {
-        for y in 0..map_settings.size.y {
-            let tile_pos = TilePos { x, y };
-            let tile_bundle = GameTileBundle {
-                height,
-                tile_bundle: TileBundle {
-                    position: tile_pos,
-                    tilemap_id: TilemapId(tilemap_entity),
-                    color: TileColor(Color::rgb_u8(10, height.value as u8, 10)),
-                    visible: TileVisible(false),
-                    ..Default::default()
-                }
-            };
-            let tile_entity = if height > map_settings.heightmap[[x as usize, y as usize]] {
-                commands
-                .spawn((tile_bundle, Open))
-                .id()
-            } else if height != map_settings.heightmap[[x as usize, y as usize]] {
-                commands
-                .spawn((tile_bundle, Terrain))
-                .id()
-            } else {
-                commands
-                .spawn((tile_bundle, Terrain))
-                .id()
-            };
-            tile_storage.set(&tile_pos, tile_entity);
-        }
+    for coordinate in map_settings.layer_size {
+        //println!("{:?}", coordinate);
+        let tile_pos: GameTilePos = coordinate.into();
+        let tile_2d_pos = tile_pos.into();
+        let tile_bundle = GameTileBundle {
+            position: tile_pos,
+            tile_bundle: TileBundle {
+                //texture_index: TileTextureIndex(height.value.clamp(0, 5) as u32),
+                position: tile_2d_pos,
+                tilemap_id: TilemapId(tilemap_entity),
+                color: TileColor(Color::rgba_u8(255, height.value as u8, 255, 255)),
+                visible: TileVisible(false),
+                ..Default::default()
+            }
+        };
+        let tile_entity = if height > map_settings.heightmap[coordinate] {
+            commands
+            .spawn((tile_bundle, Open))
+        } else if height != map_settings.heightmap[coordinate] {
+            commands
+            .spawn((tile_bundle, Terrain))
+        } else {
+            commands
+            .spawn((tile_bundle, Terrain))
+        };
+
+        tile_storage.set(&tile_2d_pos, tile_entity.id());
     }
 }
 
-fn create_heightmap(seed: u32, tilemap_size: &TilemapSize, height_limits: &MapHeight, map_scaling: f64) -> HeightMap {
+fn create_heightmap(seed: u32, tilemap_size: &GameTilemapSize, height_limits: &MapHeight, map_scaling: f64) -> HeightMap {
     let noise = Perlin::new(seed);
-    let mut noisemap = Array2::from_elem((tilemap_size.x as usize, tilemap_size.y as usize), Height{value: 0});
+    let shape: [usize; 2] = (*tilemap_size).into();
+    let mut heightmap = Array2::from_elem(shape, Height{value: 0});
     let scaling_amount: f64 = (height_limits.max - height_limits.min).into();
-    for x in 0..tilemap_size.x {
-        for y in 0..tilemap_size.y {
-            let noise_value = noise.get([x as f64 * map_scaling, y as f64 * map_scaling]);
-            let scaled_noise = ((noise_value + 1.0) / 2.0) * scaling_amount;
-            noisemap[[x as usize, y as usize]] = Height{value: scaled_noise as usize};
-        }
+    for (x, y) in tilemap_size.into_iter() {
+        let noise_value = noise.get([x as f64 * map_scaling, y as f64 * map_scaling]);
+        let scaled_noise = ((noise_value + 1.0) / 2.0) * scaling_amount;
+        heightmap[[x as usize, y as usize]] = Height{value: scaled_noise as usize};
     }
-    noisemap
+    heightmap
 }
 
 fn initalize_resources(mut commands: Commands, asset_server: Res<AssetServer>){
     let max_height = 64;
     let min_height = 0;
     let tile_pixel_length = 16.0;
-    let tile_map_size = 32;
+    let tile_map_size = 128;
     let scaling = 0.1;
     let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
     commands.insert_resource(MapSettings::new(
-        TilemapSize::from_usize(tile_map_size, tile_map_size),
+        GameTilemapSize::new(tile_map_size, tile_map_size),
         MapHeight::new(max_height, min_height),
         TilemapTileSize{x: tile_pixel_length, y: tile_pixel_length },
         scaling,
         texture_handle
     ));
+    commands.insert_resource(Tilemap3D{layers: Vec::new()});
 }
 
 impl Plugin for MapGeneratorPlugin {
