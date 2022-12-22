@@ -134,8 +134,9 @@ fn fill_tilemap(commands: &mut Commands, tilemap_entity: Entity, tile_storage: &
             }
         };
         let tile_entity = if height > map_settings.heightmap[coordinate] {
-            commands
-            .spawn((tile_bundle, Open))
+            continue;
+            /* commands
+            .spawn((tile_bundle, Open)) */
         } else if height != map_settings.heightmap[coordinate] {
             commands
             .spawn((tile_bundle, Terrain))

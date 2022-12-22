@@ -115,10 +115,10 @@ impl From<Game3DSize> for [usize; 3] {
     }
 }
 pub trait Index2D {
-    fn get_2d(self: &Self, coord: (usize, usize)) -> Entity;
+    fn get_2d(self: &Self, coord: (usize, usize)) -> Option<Entity>;
 }
 impl Index2D for TileStorage{
-    fn get_2d(self: &Self, coord: (usize, usize)) -> Entity {
-        self.get(&TilePos{x: coord.0 as u32, y: coord.1 as u32}).unwrap()
+    fn get_2d(self: &Self, coord: (usize, usize)) -> Option<Entity> {
+        self.get(&TilePos{x: coord.0 as u32, y: coord.1 as u32})
     }
 }

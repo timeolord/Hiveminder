@@ -53,7 +53,7 @@ impl Plugin for MainGamePlugin {
 fn main() {
     App::new()
         .insert_resource(TilemapRenderSettings {
-            render_chunk_size: UVec2::new(128, 128),
+            render_chunk_size: UVec2::new(32, 32),
         })
         .add_plugin(MainGamePlugin)
         .add_state(GameState::MainMenu)

@@ -51,13 +51,16 @@ pub fn display_layer(
                 let [current_layer, previous_layer] = tilemaps.many(layers);
 
                 for index in map_settings.layer_size {
-                    if let Ok(ref mut tile) = tiles.get_mut(current_layer.get_2d(index)){
-                        tile.0 = true;
+                    if let Some(entity) = current_layer.get_2d(index){
+                        if let Ok(ref mut tile) = tiles.get_mut(entity){
+                            tile.0 = true;
+                        }
                     }
-
-                    if map_settings.heightmap[index] != display_height.height - 1 {
-                        if let Ok(ref mut tile) = tiles.get_mut(previous_layer.get_2d(index)){
-                            tile.0 = false;
+                    if let Some(entity) = previous_layer.get_2d(index){
+                        if let Ok(ref mut tile) = tiles.get_mut(entity){
+                            if map_settings.heightmap[index].value != display_height.height.value - 1{
+                                tile.0 = false;
+                            }
                         }
                     }
                 }
@@ -67,11 +70,15 @@ pub fn display_layer(
                 let [current_layer, previous_layer] = tilemaps.many(layers);
 
                 for index in map_settings.layer_size {
-                    if let Ok(ref mut tile) = tiles.get_mut(current_layer.get_2d(index)){
-                        tile.0 = true;
+                    if let Some(entity) = current_layer.get_2d(index){
+                        if let Ok(ref mut tile) = tiles.get_mut(entity){
+                            tile.0 = true;
+                        }
                     }
-                    if let Ok(ref mut tile) = tiles.get_mut(previous_layer.get_2d(index)){
-                        tile.0 = false;
+                    if let Some(entity) = previous_layer.get_2d(index){
+                        if let Ok(ref mut tile) = tiles.get_mut(entity){
+                            tile.0 = false;
+                        }
                     }
                 }
             }
@@ -82,8 +89,10 @@ pub fn display_layer(
             let layer = tilemaps.get(tilemap3d.layers[display_height.height.value]).unwrap();
 
             for index in map_settings.layer_size {
-                if let Ok(ref mut tile) = tiles.get_mut(layer.get_2d(index)){
-                    tile.0 = true;
+                if let Some(entity) = layer.get_2d(index){
+                    if let Ok(ref mut tile) = tiles.get_mut(entity){
+                        tile.0 = true;
+                    }
                 }
             }
         }
