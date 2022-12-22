@@ -56,7 +56,7 @@ fn main() {
             render_chunk_size: UVec2::new(128, 128),
         })
         .add_plugin(MainGamePlugin)
-        .add_state(GameState::WorldGen)
+        .add_state(GameState::MainMenu)
         .add_plugin(TilemapPlugin)
         .add_plugin(MapGeneratorPlugin)
         .add_plugin(CameraPlugin)
