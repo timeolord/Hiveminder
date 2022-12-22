@@ -1,9 +1,5 @@
-use std::convert::identity;
-
-use bevy::reflect::Map;
 use bevy::{input::Input, math::Vec3, prelude::*, render::camera::Camera};
-use bevy_ecs_tilemap::prelude::TilemapSize;
-use bevy_ecs_tilemap::tiles::{TileVisible, TilePos, TileStorage};
+use bevy_ecs_tilemap::tiles::{TileVisible, TileStorage};
 use crate::GameTickEvent;
 use crate::map_gen::{Terrain, MapSettings, Tilemap3D};
 use ndarray::Array3;

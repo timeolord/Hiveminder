@@ -1,0 +1,9 @@
+[build]
+target = "index.html"
+release = true
+dist = "docs"
+public_url = "/"
+
+[clean]
+dist = "docs"
+cargo = false
