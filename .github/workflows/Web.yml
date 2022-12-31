@@ -34,7 +34,7 @@ jobs:
       - name: Install trunk
         run: cargo install trunk
       - name: Trunk build
-        run: trunk build
+        run: trunk build --release
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Build with Jekyll
