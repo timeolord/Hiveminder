@@ -25,13 +25,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install WASM target
+        run: rustup target add wasm32-unknown-unknown
       - name: Install trunk
         run: cargo install trunk
       - name: Trunk build
         run: trunk build
-      - name: Checkout
-        uses: actions/checkout@v3
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Build with Jekyll
