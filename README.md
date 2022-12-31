@@ -1,4 +1,5 @@
 # Rusted Fortress
+[![Rust](https://github.com/timeolord/Rusted-Fortress/actions/workflows/rust.yml/badge.svg)](https://github.com/timeolord/Rusted-Fortress/actions/workflows/rust.yml)
 Dwarf Fortress-esque game made in Bevy. Currently WIP, but you can see the current build at https://www.allanwei.com/Rusted-Fortress/.
 
 Compiling from source:
