@@ -25,11 +25,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Install trunk
-        uses: actions/checkout@v3
         run: cargo install trunk
-      - name: Install trunk
-        uses: actions/checkout@v3
+      - name: Trunk build
         run: trunk build
       - name: Checkout
         uses: actions/checkout@v3
