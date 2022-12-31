@@ -1,9 +1,9 @@
 [build]
 target = "index.html"
 release = true
-dist = "docs"
+dist = "website"
 public_url = "./"
 
 [clean]
-dist = "docs"
+dist = "website"
 cargo = false
