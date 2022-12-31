@@ -17,7 +17,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install packages
-      run: sudo apt install libasound2-dev libudev-dev -y
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: libasound2-dev libudev-dev
+        version: 1.0
+    - name: Check cache
+      uses: Swatinem/rust-cache@v2
     - name: Build
       run: cargo build --verbose
     - name: Run tests
