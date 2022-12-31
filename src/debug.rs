@@ -22,6 +22,7 @@ impl Plugin for DebugPlugin {
 }
 
 const DEBUG_FONT_SIZE: f32 = 20.0;
+const DEBUG_FONT: &str = "fonts\\FiraSans-Bold.ttf";
 
 pub fn spawn_debug_text(mut commands: Commands, asset_server: Res<AssetServer>){
     commands.spawn((
@@ -30,26 +31,26 @@ pub fn spawn_debug_text(mut commands: Commands, asset_server: Res<AssetServer>){
             TextSection::new(
                 "FPS: ",
                 TextStyle {
-                    font: asset_server.load("fonts\\FiraSans-Bold.ttf"),
+                    font: asset_server.load(DEBUG_FONT),
                     font_size: DEBUG_FONT_SIZE,
                     color: Color::WHITE,
                 },
             ),
             TextSection::from_style(TextStyle {
-                font: asset_server.load("fonts\\FiraSans-Bold.ttf"),
+                font: asset_server.load(DEBUG_FONT),
                 font_size: DEBUG_FONT_SIZE,
                 color: Color::GOLD,
             }),
             TextSection::new(
                 "Layer: ",
                 TextStyle {
-                    font: asset_server.load("fonts\\FiraSans-Bold.ttf"),
+                    font: asset_server.load(DEBUG_FONT),
                     font_size: DEBUG_FONT_SIZE,
                     color: Color::WHITE,
                 },
             ),
             TextSection::from_style(TextStyle {
-                font: asset_server.load("fonts\\FiraSans-Bold.ttf"),
+                font: asset_server.load(DEBUG_FONT),
                 font_size: DEBUG_FONT_SIZE,
                 color: Color::GOLD,
             }),

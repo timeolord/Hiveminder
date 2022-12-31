@@ -6,7 +6,8 @@ use ndarray::{Array2};
 use self::height::Height;
 pub(crate) mod height;
 use crate::GameState::{WorldGen, self};
-use crate::GameState::Game;
+use crate::texture_loader::TileTextureAtlas;
+use crate::next_game_state;
 use crate::tiles::{GameTilemapSize, GameTilePos, Game3DSize};
 
 
@@ -78,7 +79,7 @@ pub struct Tilemap3D {
     pub layers: Vec<Entity>
 }
 
-pub fn create_tilemap3d(mut commands: Commands, map_settings: Option<Res<MapSettings>>, mut game_state: ResMut<State<GameState>>, mut tilemap3d: ResMut<Tilemap3D>){
+pub fn create_tilemap3d(mut commands: Commands, map_settings: Option<Res<MapSettings>>, game_state: ResMut<State<GameState>>, mut tilemap3d: ResMut<Tilemap3D>){
     if map_settings.is_none() {
         return;
     }
@@ -89,7 +90,7 @@ pub fn create_tilemap3d(mut commands: Commands, map_settings: Option<Res<MapSett
         tilemap3d.layers.push(create_tilemap(&mut commands, height,&map_settings));
     }
 
-    game_state.set(Game).unwrap();
+    next_game_state(game_state);
 }
 
 fn create_tilemap(commands: &mut Commands, height: Height, map_settings: &MapSettings) -> Entity{
@@ -122,13 +123,13 @@ fn fill_tilemap(commands: &mut Commands, tilemap_entity: Entity, tile_storage: &
         //println!("{:?}", coordinate);
         let tile_pos: GameTilePos = coordinate.into();
         let tile_2d_pos = tile_pos.into();
-        let tile_bundle = GameTileBundle {
+        let mut tile_bundle = GameTileBundle {
             position: tile_pos,
             tile_bundle: TileBundle {
-                //texture_index: TileTextureIndex(height.value.clamp(0, 5) as u32),
+                texture_index: TileTextureIndex(0),
                 position: tile_2d_pos,
                 tilemap_id: TilemapId(tilemap_entity),
-                color: TileColor(Color::rgba_u8(255, height.value as u8, 255, 255)),
+                //color: TileColor(Color::rgba_u8(255, height.value as u8, 255, 255)),
                 visible: TileVisible(false),
                 ..Default::default()
             }
@@ -141,6 +142,7 @@ fn fill_tilemap(commands: &mut Commands, tilemap_entity: Entity, tile_storage: &
             commands
             .spawn((tile_bundle, Terrain))
         } else {
+            tile_bundle.tile_bundle.texture_index = TileTextureIndex(1);
             commands
             .spawn((tile_bundle, Terrain))
         };
@@ -162,13 +164,14 @@ fn create_heightmap(seed: u32, tilemap_size: &GameTilemapSize, height_limits: &M
     heightmap
 }
 
-fn initalize_resources(mut commands: Commands, asset_server: Res<AssetServer>){
+fn initalize_resources(mut commands: Commands, texture_handles: Res<TileTextureAtlas>){
     let max_height = 64;
     let min_height = 0;
-    let tile_pixel_length = 16.0;
+    let tile_pixel_length = 256.0;
     let tile_map_size = 128;
     let scaling = 0.1;
-    let texture_handle: Handle<Image> = asset_server.load("tiles.png");
+    let texture_handle = texture_handles.atlas.as_ref().unwrap().texture.clone();
+    //let texture_handle: Handle<Image> = asset_server.load("tiles.png");
 
     commands.insert_resource(MapSettings::new(
         GameTilemapSize::new(tile_map_size, tile_map_size),

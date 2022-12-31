@@ -4,6 +4,9 @@ use camera::CameraPlugin;
 use debug::DebugPlugin;
 use main_menu::MainMenuPlugin;
 use map_gen::MapGeneratorPlugin;
+use strum::EnumIter;
+use int_enum::IntEnum;
+use texture_loader::TextureLoaderPlugin;
 
 mod camera;
 mod map_gen;
@@ -12,22 +15,30 @@ mod main_menu;
 mod texture_loader;
 mod tiles;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, EnumIter, IntEnum)]
 pub enum GameState {
-    MainMenu,
-    WorldGen,
-    Game,
+    InitalizeAssets = 0,
+    MainMenu = 1,
+    WorldGen = 2,
+    Game = 3,
 }
-
-const GAME_TICKS: usize = 20;
 pub struct GameTickEvent; // Send a game tick every 20 engine ticks
 
 fn gametick_event_counter(mut tick_counter: Local<usize>, mut gametick_event: EventWriter<GameTickEvent>){
+    const GAME_TICKS: usize = 20;
+    
     *tick_counter += 1;
     if *tick_counter >= GAME_TICKS {
         gametick_event.send(GameTickEvent);
         *tick_counter = 0;
     }
+}
+
+fn next_game_state(mut game_state: ResMut<State<GameState>>){
+    let next_state = GameState::from_int(game_state.current().int_value() + 1).unwrap();
+    println!("{:?}", next_state);
+    game_state.set(next_state).unwrap();
 }
 
 struct MainGamePlugin;
@@ -56,11 +67,12 @@ fn main() {
             render_chunk_size: UVec2::new(32, 32),
         })
         .add_plugin(MainGamePlugin)
-        .add_state(GameState::MainMenu)
+        .add_state(GameState::from_int(0).unwrap())
         .add_plugin(TilemapPlugin)
         .add_plugin(MapGeneratorPlugin)
         .add_plugin(CameraPlugin)
         .add_plugin(DebugPlugin)
         .add_plugin(MainMenuPlugin)
+        .add_plugin(TextureLoaderPlugin)
         .run();
 }
