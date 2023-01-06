@@ -149,9 +149,9 @@ pub fn movement(
 }
 
 pub fn display_height_input(keyboard_input: Res<Input<KeyCode>>, mut display_height: ResMut<DisplayHeight>, map_settings: Res<MapSettings>, gametick_event: EventReader<GameTickEvent>) {
-    if gametick_event.is_empty() {
+    /* if gametick_event.is_empty() {
         return
-    }
+    } */
     if keyboard_input.pressed(KeyCode::Z) {
         display_height.height.value = (display_height.height.value + 1).clamp(map_settings.height_limits.min.into(), map_settings.height_limits.max.value - 1);
     }

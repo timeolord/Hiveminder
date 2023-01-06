@@ -168,7 +168,7 @@ fn initalize_resources(mut commands: Commands, texture_handles: Res<TileTextureA
     let max_height = 64;
     let min_height = 0;
     let tile_pixel_length = 256.0;
-    let tile_map_size = 128;
+    let tile_map_size = 64;
     let scaling = 0.1;
     let texture_handle = texture_handles.atlas.as_ref().unwrap().texture.clone();
     //let texture_handle: Handle<Image> = asset_server.load("tiles.png");

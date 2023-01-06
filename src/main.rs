@@ -25,11 +25,18 @@ pub enum GameState {
 }
 pub struct GameTickEvent; // Send a game tick every 20 engine ticks
 
-fn gametick_event_counter(mut tick_counter: Local<usize>, mut gametick_event: EventWriter<GameTickEvent>){
-    const GAME_TICKS: usize = 20;
-    
+#[derive(Resource)]
+struct GameSpeed(usize);
+
+impl Default for GameSpeed{
+    fn default() -> Self {
+        Self(20)
+    }
+}
+
+fn gametick_event_counter(game_speed: Res<GameSpeed>, mut tick_counter: Local<usize>, mut gametick_event: EventWriter<GameTickEvent>){
     *tick_counter += 1;
-    if *tick_counter >= GAME_TICKS {
+    if *tick_counter >= game_speed.0 {
         gametick_event.send(GameTickEvent);
         *tick_counter = 0;
     }
@@ -56,6 +63,7 @@ impl Plugin for MainGamePlugin {
             },
             ..default()
         }).set(ImagePlugin::default_nearest()))
+        .init_resource::<GameSpeed>()
         .add_event::<GameTickEvent>()
         .add_system(gametick_event_counter);
     }
