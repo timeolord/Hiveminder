@@ -7,7 +7,8 @@ use crate::{GameState::{InitalizeAssets, self}, next_game_state};
 
 #[derive(EnumIter, Display)]
 pub enum TileType {
-    Grass = 0,
+    Shadow = 0,
+    Grass,
     Stone,
 }
 

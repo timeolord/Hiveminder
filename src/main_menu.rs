@@ -19,7 +19,7 @@ fn main_menu(mut egui_context: ResMut<EguiContext>, mut state: ResMut<State<Game
     egui::SidePanel::right("right").default_width(400.0).show(egui_context.ctx_mut(), |_| {});
     egui::TopBottomPanel::top("top").exact_height(200.0).show(egui_context.ctx_mut(), |ui| {
         ui.with_layout(egui::Layout::top_down_justified(egui::Align::Center), |ui| {
-            ui.heading("Rusted Fortress");
+            ui.heading("Hiveminder");
         });
     });
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
