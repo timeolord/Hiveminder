@@ -187,34 +187,32 @@ pub fn create_shadows(
     texture_atlas: Res<TileTextureAtlas>,
     display_height: Res<DisplayHeight>,
     previous_shadow_map: Query<Entity, With<ShadowMap>>,
-    tiles: Query<(&Height, &GameTilePos), With<Visible>>)
+    tiles: Query<&GameTilePos, (With<Visible>, Without<ShadowMap>)>)
     {
-    /* if !display_height.is_changed() {
+    if !display_height.is_changed() {
         return
-    } */
+    }
 
-    /* for previous_entity in previous_shadow_map.iter(){
+    for previous_entity in previous_shadow_map.iter(){
         commands.entity(previous_entity).despawn();
-    } */
+    }
 
     let tilemap_entity = commands.spawn_empty().id();
 
     let mut tile_storage = TileStorage::empty(map_settings.layer_size.into());
-    //fill_tilemap_rect_color(texture_atlas.indices[Shadow], TilePos{x:0, y:0}, map_settings.layer_size.size, Color::BLACK, TilemapId(tilemap_entity), &mut commands, &mut tile_storage);
 
     let grid_size = map_settings.tile_size.into();
     let map_type = TilemapType::default();
 
-    for (height, position) in tiles.iter(){
-        let height_difference = (255 - ((display_height.height - *height).value * 4)) as u8;
+    for position in tiles.iter(){
+        let height_difference = (display_height.height.value.saturating_sub(position.z) as u8).saturating_mul(4);
         let tile_2d_pos = (*position).into();
         let tile_bundle =
             TileBundle {
                 texture_index: texture_atlas.indices[Shadow],
                 position: tile_2d_pos,
                 tilemap_id: TilemapId(tilemap_entity),
-                //color: TileColor(Color::rgba_u8(0, 0, 0, height_difference)),
-                color: TileColor(Color::BLACK),
+                color: TileColor(Color::rgba_u8(0, 0, 0, height_difference)),
                 visible: TileVisible(true),
                 ..Default::default()
             };

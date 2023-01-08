@@ -133,7 +133,8 @@ fn fill_tilemap(
     texture_atlas: &TileTextureAtlas) {
     for coordinate in map_settings.layer_size {
         //println!("{:?}", coordinate);
-        let tile_pos: GameTilePos = coordinate.into();
+        let (x, y) = coordinate;
+        let tile_pos: GameTilePos = [x, y, height.value].into();
         let tile_2d_pos = tile_pos.into();
         let mut tile_bundle = GameTileBundle {
             position: tile_pos,
